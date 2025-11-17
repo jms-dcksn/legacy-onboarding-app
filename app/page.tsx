@@ -1,9 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
   const [showToast, setShowToast] = useState(false);
+  const [showMaintenancePopup, setShowMaintenancePopup] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+  const [popupCount, setPopupCount] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const popupCountRef = useRef(0);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -12,6 +18,45 @@ export default function Home() {
       setShowToast(false);
     }, 3000);
   };
+
+  useEffect(() => {
+    popupCountRef.current = popupCount;
+  }, [popupCount]);
+
+  useEffect(() => {
+    if (maintenanceEnabled && popupCountRef.current < 2) {
+      // Random interval between 5-15 seconds
+      const scheduleNextPopup = () => {
+        if (popupCountRef.current >= 2) {
+          return; // Stop scheduling if we've reached the limit
+        }
+        const delay = Math.random() * 10000 + 5000; // 5-15 seconds
+        intervalRef.current = setTimeout(() => {
+          if (popupCountRef.current < 2) {
+            setShowMaintenancePopup(true);
+            setPopupCount(prev => {
+              const newCount = prev + 1;
+              popupCountRef.current = newCount;
+              return newCount;
+            });
+            scheduleNextPopup();
+          }
+        }, delay);
+      };
+      scheduleNextPopup();
+    } else {
+      if (intervalRef.current) {
+        clearTimeout(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearTimeout(intervalRef.current);
+      }
+    };
+  }, [maintenanceEnabled]);
 
   return (
     <div className="legacy-container">
@@ -413,6 +458,77 @@ export default function Home() {
         <div className="legacy-toast">
           <div className="legacy-toast-content">
             <strong>✓ Success!</strong> User has been created successfully.
+          </div>
+        </div>
+      )}
+
+      {showMaintenancePopup && (
+        <div className="legacy-modal-overlay">
+          <div className="legacy-modal">
+            <div className="legacy-modal-header">
+              <strong>⚠ SYSTEM MAINTENANCE NOTIFICATION</strong>
+              <button
+                className="legacy-modal-close"
+                onClick={() => setShowMaintenancePopup(false)}
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="legacy-modal-body">
+              <p>
+                <strong>ATTENTION:</strong> Scheduled system maintenance will occur on{' '}
+                <strong>March 20, 2003 from 2:00 AM - 4:00 AM EST</strong>.
+              </p>
+              <p>
+                During this time, the Merchant Onboarding System will be unavailable. Please save
+                your work before this time.
+              </p>
+              <p>
+                We apologize for any inconvenience this may cause. For questions, please contact
+                Technical Support at <strong>1-800-555-0123</strong>.
+              </p>
+            </div>
+            <div className="legacy-modal-footer">
+              <button
+                className="legacy-button"
+                onClick={() => setShowMaintenancePopup(false)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="legacy-settings-icon" onClick={() => setShowSettings(!showSettings)} title="Settings">
+        ⚙
+      </div>
+
+      {showSettings && (
+        <div className="legacy-settings-panel">
+          <div className="legacy-settings-header">
+            <strong>Settings</strong>
+            <button
+              className="legacy-modal-close"
+              onClick={() => setShowSettings(false)}
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="legacy-settings-body">
+            <label className="legacy-settings-toggle">
+              <input
+                type="checkbox"
+                checked={maintenanceEnabled}
+                onChange={(e) => setMaintenanceEnabled(e.target.checked)}
+              />
+              <span>Enable Maintenance Popup Notifications</span>
+            </label>
+            <p className="legacy-settings-help">
+              When enabled, maintenance notifications will appear randomly while filling out the form.
+            </p>
           </div>
         </div>
       )}
